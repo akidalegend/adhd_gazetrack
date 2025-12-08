@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import time
+import cv2
+import numpy as np
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
@@ -24,6 +28,37 @@ def _read_time_bounds(csv_path: Path) -> Tuple[float, float]:
     return float(df['t'].iloc[0]), float(df['t'].iloc[-1])
 
 
+def _run_countdown(duration=5):
+    """Opens camera briefly to show countdown before main task starts."""
+    cap = cv2.VideoCapture(0)
+    window_name = "Get Ready"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    
+    start_time = time.time()
+    while True:
+        elapsed = time.time() - start_time
+        remaining = math.ceil(duration - elapsed)
+        if remaining <= 0:
+            break
+            
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        cv2.putText(frame, f"Starting in {remaining}s", (50, 100), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+        cv2.imshow(window_name, frame)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            cap.release()
+            cv2.destroyAllWindows()
+            return False
+            
+    cap.release()
+    cv2.destroyAllWindows()
+    return True
+
+
 def run_fixation_task(
     *,
     label: Optional[str],
@@ -39,6 +74,12 @@ def run_fixation_task(
     slug = label or timestamp.strftime('session_%Y%m%d_%H%M%S')
     raw_dir = ensure_dir(raw_dir)
     raw_path = raw_dir / f'{slug}_{timestamp:%Y%m%d_%H%M%S}.csv'
+
+    # --- INSERT COUNTDOWN HERE ---
+    if not _run_countdown():
+        print("Task cancelled.")
+        return raw_path
+    # -----------------------------
 
     collect_main(
         str(raw_path),

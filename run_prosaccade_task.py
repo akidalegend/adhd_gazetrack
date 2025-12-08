@@ -59,6 +59,38 @@ def _stimulus_image(
     return canvas
 
 
+def _run_countdown(cap, stimulus_window, capture_window, stimulus_size, duration=5):
+    """Runs a visual countdown on the open windows."""
+    start_time = time.time()
+    while True:
+        elapsed = time.time() - start_time
+        remaining = math.ceil(duration - elapsed)
+        if remaining <= 0:
+            break
+
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Stimulus window countdown (Big Text)
+        stim_img = np.zeros((stimulus_size, stimulus_size, 3), dtype=np.uint8)
+        text = str(remaining)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        text_size = cv2.getTextSize(text, font, 4, 5)[0]
+        text_x = (stimulus_size - text_size[0]) // 2
+        text_y = (stimulus_size + text_size[1]) // 2
+        cv2.putText(stim_img, text, (text_x, text_y), font, 4, (255, 255, 255), 5)
+        cv2.imshow(stimulus_window, stim_img)
+
+        # Capture window text (Overlay)
+        cv2.putText(frame, f"Starting in {remaining}s", (50, 50), font, 1, (0, 255, 255), 2)
+        cv2.imshow(capture_window, frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            return False
+    return True
+
+
 def _random_point(size: int, margin: int) -> Tuple[int, int]:
     lower = margin
     upper = size - margin
@@ -97,6 +129,14 @@ def run_trials(
     cv2.resizeWindow('Prosaccade Stimulus', stimulus_size, stimulus_size)
 
     cv2.namedWindow('Prosaccade Capture', cv2.WINDOW_NORMAL)
+
+    # --- INSERT COUNTDOWN HERE ---
+    if not _run_countdown(cap, 'Prosaccade Stimulus', 'Prosaccade Capture', stimulus_size):
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Task cancelled during countdown.")
+        return raw_path
+    # -----------------------------
 
     margin_center = max(center_radius, 5)
     margin_target = max(target_radius, 5)
@@ -218,6 +258,7 @@ def run_trials(
             {
                 'trial': event.trial,
                 'angle_deg': event.angle_deg,
+                'time': event.onset_time,
                 'x': event.target_center[0],
                 'y': event.target_center[1],
                 'fixation_x': event.fixation_center[0],

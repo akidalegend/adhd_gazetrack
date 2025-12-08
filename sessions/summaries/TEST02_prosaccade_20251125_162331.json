@@ -1,0 +1,122 @@
+{
+  "timestamp_iso": "2025-11-25T16:23:31.453579",
+  "session_label": "TEST02",
+  "task": "prosaccade",
+  "raw_csv": "sessions/raw/TEST02_prosaccade_20251125_162331.csv",
+  "configured_duration_s": null,
+  "configured_trials": 10,
+  "center_duration_s": 1.0,
+  "gap_duration_s": 0.2,
+  "target_duration_s": 1.5,
+  "stimuli_directions": [
+    {
+      "trial": 0,
+      "angle_deg": 221.40877394936447,
+      "x": 256,
+      "y": 341,
+      "fixation_x": 414,
+      "fixation_y": 480
+    },
+    {
+      "trial": 1,
+      "angle_deg": 270.9683419941713,
+      "x": 468,
+      "y": 204,
+      "fixation_x": 465,
+      "fixation_y": 414
+    },
+    {
+      "trial": 2,
+      "angle_deg": 287.83651023689026,
+      "x": 280,
+      "y": 147,
+      "fixation_x": 216,
+      "fixation_y": 347
+    },
+    {
+      "trial": 3,
+      "angle_deg": 75.39112643013105,
+      "x": 560,
+      "y": 586,
+      "fixation_x": 508,
+      "fixation_y": 459
+    },
+    {
+      "trial": 4,
+      "angle_deg": 59.8042155445306,
+      "x": 159,
+      "y": 324,
+      "fixation_x": 54,
+      "fixation_y": 143
+    },
+    {
+      "trial": 5,
+      "angle_deg": 186.3668567788457,
+      "x": 14,
+      "y": 287,
+      "fixation_x": 181,
+      "fixation_y": 311
+    },
+    {
+      "trial": 6,
+      "angle_deg": 203.76216854562585,
+      "x": 14,
+      "y": 265,
+      "fixation_x": 15,
+      "fixation_y": 350
+    },
+    {
+      "trial": 7,
+      "angle_deg": 220.19084390849505,
+      "x": 325,
+      "y": 214,
+      "fixation_x": 486,
+      "fixation_y": 350
+    },
+    {
+      "trial": 8,
+      "angle_deg": 271.091967984219,
+      "x": 431,
+      "y": 14,
+      "fixation_x": 427,
+      "fixation_y": 165
+    },
+    {
+      "trial": 9,
+      "angle_deg": 186.9297245251165,
+      "x": 14,
+      "y": 463,
+      "fixation_x": 134,
+      "fixation_y": 489
+    }
+  ],
+  "duration_s": 29.377714157104492,
+  "path_length_deg": 5150.813101466114,
+  "mean_angular_speed_deg_per_s": 176.4358771570043,
+  "spike_count": 44,
+  "percent_time_moving": 0.91324200913242,
+  "blink_rate_per_s": 0.44251228968894724,
+  "gaze_dispersion": 295.95487896803,
+  "saccade_count": 1,
+  "fixation_count": 2,
+  "mean_saccade_duration_s": 0.26360321044921875,
+  "median_saccade_duration_s": 0.26360321044921875,
+  "mean_saccade_peak_velocity": 1168.483041602192,
+  "mean_saccade_amplitude": -308.6336586295131,
+  "mean_fixation_duration_s": 14.422479152679443,
+  "saccade_latencies_s": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "intrusive_saccade_count": 0,
+  "intrusive_counts_per_interval": [],
+  "is_calibrated": true
+}

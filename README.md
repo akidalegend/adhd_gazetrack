@@ -1,181 +1,78 @@
-# Gaze Tracking
+# ADHD Saccade Screening Toolkit
 
-![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)
-![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-[![GitHub stars](https://img.shields.io/github/stars/antoinelame/GazeTracking.svg?style=social)](https://github.com/antoinelame/GazeTracking/stargazers)
+This fork repurposes the webcam eye-tracking stack to run short “games” (calibration, fixation, pro/antisaccade) and extract saccade metrics that may correlate with ADHD risk. The scripts show timed stimuli, log per-frame gaze/head data to CSV, summarize to JSON, and append feature rows to `master_metrics.csv` for later analysis.
 
-This is a Python (2 and 3) library that provides a **webcam-based eye tracking system**. It gives you the exact position of the pupils and the gaze direction, in real time.
+## What you need
+- Python 3.9+ with webcam access
+- OpenCV, NumPy, Pandas, Dlib (install via `requirements.txt`) or use the provided `environment.yml`
+- A laptop with a built-in or USB camera and a clear view of the participant’s eyes
 
-[![Demo](https://i.imgur.com/WNqgQkO.gif)](https://youtu.be/YEZMk1P0-yw)
-
-_🚀 Quick note: I'm looking for job opportunities as a software developer, for exciting projects in ambitious companies. Anywhere in the world. Send me an email!_
-
-## Installation
-
-Clone this project:
-
-```shell
+## Setup
+```bash
 git clone https://github.com/antoinelame/GazeTracking.git
-```
+cd ADHD_Webcam
 
-### For Pip install
-Install these dependencies (NumPy, OpenCV, Dlib):
-
-```shell
+# Option A: pip
 pip install -r requirements.txt
-```
 
-> The Dlib library has four primary prerequisites: Boost, Boost.Python, CMake and X11/XQuartx. If you doesn't have them, you can [read this article](https://www.pyimagesearch.com/2017/03/27/how-to-install-dlib/) to know how to easily install them.
-
-
-### For Anaconda install
-Install these dependencies (NumPy, OpenCV, Dlib):
-
-```shell
+# Option B: conda
 conda env create --file environment.yml
-#After creating environment, activate it
 conda activate GazeTracking
 ```
 
+## Run order (recommended)
+1) **Calibration** – fit gaze-to-screen mapping
+```bash
+python run_calibration.py --label P01
+```
+Saves model to `sessions/calibration/{label}_calibration.json` and offers a visual check.
 
-### Verify Installation
+2) **Fixation task** – sustained attention baseline
+```bash
+python run_fixation_task.py --label P01 --duration 25
+```
+Shows a center dot (optional), records `sessions/raw/*.csv`, writes summary JSON (if enabled), and appends metrics to `master_metrics.csv` with `task=fixation_dot`.
 
-Run the demo:
+3) **Prosaccade task** – look TOWARD the flashed target
+```bash
+python run_prosaccade_task.py --label P01 --trials 24 --center-duration 1.0 --gap-duration 0.2 --target-duration 1.5
+```
 
-```shell
+4) **Antisaccade task** – look OPPOSITE the flashed target
+```bash
+python run_antisaccade_task.py --label P01 --trials 24 --center-duration 1.0 --gap-duration 0.2 --target-duration 1.5
+```
+
+Press `q` in any window to exit early. Change `--trials` or timing flags to match your paradigm.
+
+## Data outputs
+- **Raw per-frame CSVs**: `sessions/raw/{label}_*.csv` (gaze ratios, head pose, blink flags, timestamps).
+- **Summaries**: `sessions/summaries/{label}_*.json` with latency distributions and task metadata.
+- **Master metrics table**: `master_metrics.csv` appends one row per run. Key columns:
+  - `session_label`, `task`, `raw_csv`, `configured_duration_s`, `configured_trials`
+  - Timing: `center_duration_s`, `gap_duration_s`, `target_duration_s`, `duration_s`
+  - Kinematics: `path_length_deg`, `mean_angular_speed_deg_per_s`, `spike_count`, `percent_time_moving`, `blink_rate_per_s`, `gaze_dispersion`
+  - Saccade/fixation: `saccade_count`, `fixation_count`, `mean_saccade_duration_s`, `mean_saccade_peak_velocity`, `mean_saccade_amplitude`, `mean_fixation_duration_s`
+  - Task-specific: `saccade_latencies_s` (list), `intrusive_saccade_count`, `intrusive_counts_per_interval`, `stimuli_directions`
+
+## How the metrics are computed
+- `analysis.py` loads each raw CSV, applies calibration if available, computes head-motion path length, angular speeds, blink rate, and gaze dispersion.
+- Saccades/fixations are detected from gaze velocity; latencies are aligned to stimulus times; intrusive saccades are counted inside specified intervals.
+- Outputs are cleaned (NaN → null) before writing JSON and `master_metrics.csv`.
+
+## Tips for data quality
+- Seat the participant ~50–70 cm from the screen; keep head/torso squared to the display.
+- Put the webcam at eye height, centered above the screen; avoid looking up/down at the camera.
+- Use even, front-facing light; avoid strong backlight or reflections on glasses.
+- Keep the screen at a comfortable brightness and avoid moving windows behind stimuli.
+- Minimize movement: steady chair/table; consider a chin rest or forehead stop if available.
+- Re-run calibration after any camera move, lighting change, or participant repositioning.
+
+## Quick demo (pupil tracking only)
+If you just want to see the tracker overlay:
+```bash
 python example.py
 ```
 
-## Simple Demo
-
-```python
-import cv2
-from gaze_tracking import GazeTracking
-
-gaze = GazeTracking()
-webcam = cv2.VideoCapture(0)
-
-while True:
-    _, frame = webcam.read()
-    gaze.refresh(frame)
-
-    new_frame = gaze.annotated_frame()
-    text = ""
-
-    if gaze.is_right():
-        text = "Looking right"
-    elif gaze.is_left():
-        text = "Looking left"
-    elif gaze.is_center():
-        text = "Looking center"
-
-    cv2.putText(new_frame, text, (60, 60), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 0, 0), 2)
-    cv2.imshow("Demo", new_frame)
-
-    if cv2.waitKey(1) == 27:
-        break
-```
-
-## Documentation
-
-In the following examples, `gaze` refers to an instance of the `GazeTracking` class.
-
-### Refresh the frame
-
-```python
-gaze.refresh(frame)
-```
-
-Pass the frame to analyze (numpy.ndarray). If you want to work with a video stream, you need to put this instruction in a loop, like the example above.
-
-### Position of the left pupil
-
-```python
-gaze.pupil_left_coords()
-```
-
-Returns the coordinates (x,y) of the left pupil.
-
-### Position of the right pupil
-
-```python
-gaze.pupil_right_coords()
-```
-
-Returns the coordinates (x,y) of the right pupil.
-
-### Looking to the left
-
-```python
-gaze.is_left()
-```
-
-Returns `True` if the user is looking to the left.
-
-### Looking to the right
-
-```python
-gaze.is_right()
-```
-
-Returns `True` if the user is looking to the right.
-
-### Looking at the center
-
-```python
-gaze.is_center()
-```
-
-Returns `True` if the user is looking at the center.
-
-### Horizontal direction of the gaze
-
-```python
-ratio = gaze.horizontal_ratio()
-```
-
-Returns a number between 0.0 and 1.0 that indicates the horizontal direction of the gaze. The extreme right is 0.0, the center is 0.5 and the extreme left is 1.0.
-
-### Vertical direction of the gaze
-
-```python
-ratio = gaze.vertical_ratio()
-```
-
-Returns a number between 0.0 and 1.0 that indicates the vertical direction of the gaze. The extreme top is 0.0, the center is 0.5 and the extreme bottom is 1.0.
-
-### Blinking
-
-```python
-gaze.is_blinking()
-```
-
-Returns `True` if the user's eyes are closed.
-
-### Webcam frame
-
-```python
-frame = gaze.annotated_frame()
-```
-
-Returns the main frame with pupils highlighted.
-
-## Experimental task runners
-
-For research experiments we provide turnkey scripts that show controlled fixation/target stimuli, record per-frame metrics, and append summary features (including `saccade_latencies_s`) into `master_metrics.csv`.
-
-- **Prosaccade**: run `python run_prosaccade_task.py --label P01` and instruct participants to look directly at the green target when it appears. The script randomizes fixation and target locations every trial, stores a raw CSV under `sessions/raw/`, and writes a JSON summary (with latency metrics) to `sessions/summaries/`.
-- **Antisaccade**: run `python run_antisaccade_task.py --label P01` and remind participants to look to the mirror-opposite side of the green target. The timing/recording pipeline matches the prosaccade task so latency distributions can be compared directly via the `saccade_latencies_s` field in summaries or `master_metrics.csv`.
-
-Both scripts accept `--trials`, `--center-duration`, `--gap-duration`, and `--target-duration` to match your paradigm. Press `q` to terminate early if needed.
-
-## You want to help?
-
-Your suggestions, bugs reports and pull requests are welcome and appreciated. You can also starring ⭐️ the project!
-
-If the detection of your pupils is not completely optimal, you can send me a video sample of you looking in different directions. I would use it to improve the algorithm.
-
-## Licensing
-
-This project is released by Antoine Lamé under the terms of the MIT Open Source License. View LICENSE for more information.
+## License
+MIT License (original project by Antoine Lamé).

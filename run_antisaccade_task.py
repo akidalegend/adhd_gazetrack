@@ -61,6 +61,45 @@ def _random_point(size: int, margin: int) -> Tuple[int, int]:
     )
 
 
+def _run_countdown(cap: cv2.VideoCapture, stimulus_size: int, duration: int = 5) -> bool:
+    """
+    Displays a countdown on the stimulus window and a 'Get Ready' overlay on the capture window.
+    Returns True if the countdown completes, False if the user quits (presses 'q').
+    """
+    start_time = time.time()
+    while True:
+        elapsed = time.time() - start_time
+        remaining = math.ceil(duration - elapsed)
+
+        if remaining <= 0:
+            break
+
+        # Stimulus window: Black background with white countdown text
+        stim_img = np.zeros((stimulus_size, stimulus_size, 3), dtype=np.uint8)
+        text = str(remaining)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 4.0
+        thickness = 10
+        text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+        text_x = (stimulus_size - text_size[0]) // 2
+        text_y = (stimulus_size + text_size[1]) // 2
+        cv2.putText(stim_img, text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness)
+        cv2.imshow('Antisaccade Stimulus', stim_img)
+
+        # Capture window: Live feed with "Get Ready" overlay
+        ret, frame = cap.read()
+        if ret:
+            h, w = frame.shape[:2]
+            overlay_text = f"Get Ready: {remaining}"
+            cv2.putText(frame, overlay_text, (50, h // 2), font, 1.5, (0, 255, 255), 3)
+            cv2.imshow('Antisaccade Capture', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            return False
+    
+    return True
+
+
 def run_trials(
     *,
     label: str,
@@ -89,6 +128,12 @@ def run_trials(
     cv2.namedWindow('Antisaccade Stimulus', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('Antisaccade Stimulus', stimulus_size, stimulus_size)
     cv2.namedWindow('Antisaccade Capture', cv2.WINDOW_NORMAL)
+
+    if not _run_countdown(cap, stimulus_size):
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Task cancelled during countdown.")
+        return raw_path
 
     margin_center = max(center_radius, 5)
     margin_target = max(target_radius, 5)
@@ -210,6 +255,7 @@ def run_trials(
             {
                 'trial': event.trial,
                 'angle_deg': event.angle_deg,
+                'time': event.onset_time,
                 'x': event.target_center[0],
                 'y': event.target_center[1],
                 'fixation_x': event.fixation_center[0],

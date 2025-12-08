@@ -1,0 +1,31 @@
+{
+  "duration_s": 29.377714157104492,
+  "path_length_deg": 5150.813101466114,
+  "mean_angular_speed_deg_per_s": 176.4358771570043,
+  "spike_count": 44,
+  "percent_time_moving": 0.91324200913242,
+  "blink_rate_per_s": 0.44251228968894724,
+  "gaze_dispersion": 295.95487896803,
+  "saccade_count": 19,
+  "fixation_count": 16,
+  "mean_saccade_duration_s": 0.4533210177170603,
+  "median_saccade_duration_s": 0.5320749282836914,
+  "mean_saccade_peak_velocity": 568.1721808797919,
+  "mean_saccade_amplitude": -65.25842192576853,
+  "mean_fixation_duration_s": 0.9892436414957047,
+  "saccade_latencies_s": [
+    0.39945077896118164,
+    null,
+    0.5331771373748779,
+    null,
+    0.1351621150970459,
+    0.13292384147644043,
+    0.0,
+    0.0,
+    null,
+    0.40389013290405273
+  ],
+  "intrusive_saccade_count": 0,
+  "intrusive_counts_per_interval": [],
+  "is_calibrated": true
+}
