@@ -59,6 +59,37 @@ def _run_countdown(duration=5):
     return True
 
 
+def _wait_for_click(window_name: str = "Fixation Start", width: int = 500, height: int = 300, text: str = "Click to start") -> bool:
+    """Shows a start screen and waits for a left-click or 'q' to cancel."""
+    clicked = False
+
+    def _on_mouse(event, _x, _y, _flags, _param):  # pragma: no cover - UI event
+        nonlocal clicked
+        if event == cv2.EVENT_LBUTTONDOWN:
+            clicked = True
+
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_name, width, height)
+    cv2.setMouseCallback(window_name, _on_mouse)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    while True:
+        canvas = np.zeros((height, width, 3), dtype=np.uint8)
+        text_size = cv2.getTextSize(text, font, 1.0, 2)[0]
+        text_x = (width - text_size[0]) // 2
+        text_y = (height + text_size[1]) // 2
+        cv2.putText(canvas, text, (text_x, text_y), font, 1.0, (0, 255, 255), 2)
+        cv2.rectangle(canvas, (text_x - 20, text_y - text_size[1] - 20), (text_x + text_size[0] + 20, text_y + 20), (0, 255, 0), 2)
+        cv2.imshow(window_name, canvas)
+        key = cv2.waitKey(10) & 0xFF
+        if clicked:
+            cv2.destroyWindow(window_name)
+            return True
+        if key == ord('q'):
+            cv2.destroyWindow(window_name)
+            return False
+
+
 def run_fixation_task(
     *,
     label: Optional[str],
@@ -74,6 +105,10 @@ def run_fixation_task(
     slug = label or timestamp.strftime('session_%Y%m%d_%H%M%S')
     raw_dir = ensure_dir(raw_dir)
     raw_path = raw_dir / f'{slug}_{timestamp:%Y%m%d_%H%M%S}.csv'
+
+    if not _wait_for_click():
+        print("Task cancelled before start click.")
+        return raw_path
 
     # --- INSERT COUNTDOWN HERE ---
     if not _run_countdown():

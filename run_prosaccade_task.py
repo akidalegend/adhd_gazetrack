@@ -91,6 +91,30 @@ def _run_countdown(cap, stimulus_window, capture_window, stimulus_size, duration
     return True
 
 
+def _configure_camera(cap: cv2.VideoCapture, width: int = 640, height: int = 480, fps: int = 30) -> None:
+    """Set basic capture properties for more stable pupil detection."""
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    cap.set(cv2.CAP_PROP_FPS, fps)
+
+
+def _pupil_detection_check(gaze: GazeTracking, cap: cv2.VideoCapture, samples: int = 40) -> float:
+    """Quickly sample frames to estimate pupil detection rate before starting."""
+    hits = 0
+    total = 0
+    for _ in range(samples):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        gaze.refresh(frame)
+        total += 1
+        if gaze.pupils_located:
+            hits += 1
+    rate = hits / total if total else 0.0
+    print(f"Pupil detection warmup: {rate:.0%} ({hits}/{total})")
+    return rate
+
+
 def _random_point(size: int, margin: int) -> Tuple[int, int]:
     lower = margin
     upper = size - margin
@@ -98,6 +122,32 @@ def _random_point(size: int, margin: int) -> Tuple[int, int]:
         random.randint(lower, upper),
         random.randint(lower, upper),
     )
+
+
+def _wait_for_click(window_name: str, size: int, text: str = 'Click to start') -> bool:
+    """Shows a start screen and waits for a left-click or 'q' to cancel."""
+    clicked = False
+
+    def _on_mouse(event, _x, _y, _flags, _param):  # pragma: no cover - UI event
+        nonlocal clicked
+        if event == cv2.EVENT_LBUTTONDOWN:
+            clicked = True
+
+    cv2.setMouseCallback(window_name, _on_mouse)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    while True:
+        canvas = np.zeros((size, size, 3), dtype=np.uint8)
+        text_size = cv2.getTextSize(text, font, 1.2, 3)[0]
+        text_x = (size - text_size[0]) // 2
+        text_y = (size + text_size[1]) // 2
+        cv2.putText(canvas, text, (text_x, text_y), font, 1.2, (0, 255, 255), 3)
+        cv2.rectangle(canvas, (text_x - 20, text_y - text_size[1] - 20), (text_x + text_size[0] + 20, text_y + 20), (0, 255, 0), 2)
+        cv2.imshow(window_name, canvas)
+        key = cv2.waitKey(10) & 0xFF
+        if clicked:
+            return True
+        if key == ord('q'):
+            return False
 
 
 def run_trials(
@@ -129,6 +179,13 @@ def run_trials(
     cv2.resizeWindow('Prosaccade Stimulus', stimulus_size, stimulus_size)
 
     cv2.namedWindow('Prosaccade Capture', cv2.WINDOW_NORMAL)
+
+    # Wait for explicit click before starting countdown/trials
+    if not _wait_for_click('Prosaccade Stimulus', stimulus_size):
+        cap.release()
+        cv2.destroyAllWindows()
+        print("Task cancelled before start click.")
+        return raw_path
 
     # --- INSERT COUNTDOWN HERE ---
     if not _run_countdown(cap, 'Prosaccade Stimulus', 'Prosaccade Capture', stimulus_size):
