@@ -3,9 +3,9 @@ import numpy as np
 import time
 import json
 import argparse
+from collections import deque  
 from gaze_tracking import GazeTracking
 from task_utils import prompt_label, ensure_directories
-
 
 def _wait_for_click(window_name: str = "Calibration Start", width: int = 600, height: int = 400, text: str = "Click to start") -> bool:
     """Display a simple start screen and wait for a left-click or 'q'."""
@@ -206,6 +206,83 @@ def compute_calibration_model(data):
     return model
 
 def verify_calibration(model, screen_w, screen_h, win_x, win_y, fullscreen=False):
+    """
+    Runs a loop showing the estimated gaze point on screen.
+    Allows the user to visually check accuracy.
+    """
+    print("\n--- VERIFICATION MODE ---")
+    print("Look around the screen. A green circle should follow your eyes.")
+    print("Press 'q' or ESC to finish.")
+    
+    gaze = GazeTracking()
+    webcam = cv2.VideoCapture(0)
+    window_name = "Verification"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_name, screen_w, screen_h)
+    cv2.moveWindow(window_name, win_x, win_y)
+    if fullscreen:
+        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    # --- SMOOTHING CONFIGURATION ---
+    SMOOTHING_WINDOW = 7  # Number of frames to average. Higher = smoother but more lag.
+    history_x = deque(maxlen=SMOOTHING_WINDOW)
+    history_y = deque(maxlen=SMOOTHING_WINDOW)
+    # -------------------------------
+
+    while True:
+        _, frame = webcam.read()
+        gaze.refresh(frame)
+        
+        # Create a black background
+        canvas = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
+        
+        # Instructions
+        cv2.putText(canvas, "Verification: Look around.", (50, 50), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(canvas, "Green Dot = Estimated Gaze (Smoothed)", (50, 100), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        if gaze.pupils_located:
+            h_ratio = gaze.horizontal_ratio()
+            v_ratio = gaze.vertical_ratio()
+            
+            if h_ratio is not None and v_ratio is not None:
+                # Apply the model
+                # x = slope * h + intercept
+                raw_x = int(model["x_slope"] * h_ratio + model["x_intercept"])
+                raw_y = int(model["y_slope"] * v_ratio + model["y_intercept"])
+                
+                # Add to history buffers
+                history_x.append(raw_x)
+                history_y.append(raw_y)
+
+                # Calculate smoothed position
+                smooth_x = int(np.mean(history_x))
+                smooth_y = int(np.mean(history_y))
+                
+                # Clamp to screen
+                smooth_x = max(0, min(screen_w, smooth_x))
+                smooth_y = max(0, min(screen_h, smooth_y))
+                
+                # Draw cursor (Smoothed)
+                cv2.circle(canvas, (smooth_x, smooth_y), 20, (0, 255, 0), -1)
+                
+                # Optional: Draw a small red dot for the raw (jittery) signal to compare
+                # cv2.circle(canvas, (raw_x, raw_y), 5, (0, 0, 255), -1) 
+                
+                # Draw raw eyes on corner for debug
+                annotated = gaze.annotated_frame()
+                small_frame = cv2.resize(annotated, (320, 240))
+                canvas[screen_h-240:screen_h, 0:320] = small_frame
+
+        cv2.imshow(window_name, canvas)
+        
+        key = cv2.waitKey(1)
+        if key == 27 or key == ord('q'):  # ESC or q
+            break
+            
+    webcam.release()
+    cv2.destroyAllWindows()
     """
     Runs a loop showing the estimated gaze point on screen.
     Allows the user to visually check accuracy.
