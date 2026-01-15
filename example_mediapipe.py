@@ -23,7 +23,7 @@ while True:
     gaze.refresh(frame)
     frame_annotated = gaze.annotated_frame()
     
-    # Gaze direction text
+    # Gaze direction texts
     text = ""
     if gaze.is_blinking():
         text = "Blinking"
